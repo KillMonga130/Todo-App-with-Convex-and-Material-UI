@@ -1,15 +1,29 @@
 import React, { useState } from "react";
-import dayjs, { Dayjs } from "dayjs";
+import dayjs from "dayjs";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
-import { TextField, Button, Checkbox, List, ListItem, ListItemText, IconButton, Select, MenuItem } from "@mui/material";
+import {
+  TextField,
+  Button,
+  Checkbox,
+  List,
+  ListItem,
+  ListItemText,
+  IconButton,
+  Select,
+  MenuItem,
+  Typography,
+  CircularProgress,
+} from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { DatePicker } from "@mui/x-date-pickers";
+import MicIcon from "@mui/icons-material/Mic";
+import { useSpeechRecognition } from "./hooks/useSpeechRecognition"; // Import the hook
 
 function App() {
   const [newTask, setNewTask] = useState("");
   const [priority, setPriority] = useState(2);
-  const [dueDate, setDueDate] = useState<string | undefined>(undefined); // Store due date as a string or undefined
+  const [dueDate, setDueDate] = useState<string | undefined>(undefined);
   const [searchText, setSearchText] = useState("");
   const [filter, setFilter] = useState("all");
 
@@ -17,26 +31,35 @@ function App() {
   const addTask = useMutation(api.tasks.add);
   const toggleTask = useMutation(api.tasks.toggle);
   const deleteTask = useMutation(api.tasks.remove);
-  const editTask = useMutation(api.tasks.edit);
   const updatePriority = useMutation(api.tasks.updatePriority);
 
-  const handleAddTask = () => {
-    if (newTask.trim()) {
-      addTask({ text: newTask, priority, dueDate });
+  // Handle voice recognition
+  const onVoiceResult = (transcript: string) => {
+    setNewTask(transcript);
+    handleAddTask(transcript); // Automatically add task after recognition
+  };
+
+  const { isListening, startListening, stopListening } = useSpeechRecognition(onVoiceResult);
+
+  const handleAddTask = (taskText: string) => {
+    if (taskText.trim()) {
+      addTask({ text: taskText, priority, dueDate });
       setNewTask("");
       setPriority(2);
-      setDueDate(undefined); // Reset to undefined
+      setDueDate(undefined);
     }
   };
 
   return (
-    <div className="App" style={{ padding: "20px", maxWidth: "600px", margin: "auto" }}>
-      <h1>Todo List</h1>
+    <div style={{ padding: "20px", maxWidth: "600px", margin: "auto" }}>
+      <Typography variant="h4" gutterBottom>
+        Todo List
+      </Typography>
       <TextField
         label="New Task"
         value={newTask}
         onChange={(e) => setNewTask(e.target.value)}
-        onKeyPress={(e) => e.key === "Enter" && handleAddTask()}
+        onKeyPress={(e) => e.key === "Enter" && handleAddTask(newTask)}
         fullWidth
         margin="normal"
       />
@@ -47,12 +70,22 @@ function App() {
       </Select>
       <DatePicker
         label="Due Date"
-        value={dueDate ? dayjs(dueDate) : null} // Convert string to dayjs object
-        onChange={(newDate) => setDueDate(newDate ? newDate.toISOString() : undefined)} // Store as ISO string or undefined
+        value={dueDate ? dayjs(dueDate) : null}
+        onChange={(newDate) => setDueDate(newDate ? newDate.toISOString() : undefined)}
         slotProps={{ textField: { fullWidth: true, margin: "normal" } }}
       />
-      <Button onClick={handleAddTask} variant="contained" color="primary" fullWidth style={{ marginBottom: "20px" }}>
+      <Button onClick={() => handleAddTask(newTask)} variant="contained" color="primary" fullWidth style={{ marginTop: "10px" }}>
         Add Task
+      </Button>
+      <Button
+        onClick={isListening ? stopListening : startListening}
+        variant="outlined"
+        color={isListening ? "secondary" : "primary"}
+        fullWidth
+        startIcon={<MicIcon />}
+        style={{ marginTop: "10px" }}
+      >
+        {isListening ? "Listening..." : "Add Task by Voice"}
       </Button>
       <TextField
         label="Search"
@@ -60,8 +93,9 @@ function App() {
         onChange={(e) => setSearchText(e.target.value)}
         fullWidth
         margin="normal"
+        style={{ marginTop: "10px" }}
       />
-      <Select value={filter} onChange={(e) => setFilter(e.target.value)} fullWidth>
+      <Select value={filter} onChange={(e) => setFilter(e.target.value)} fullWidth style={{ marginTop: "10px" }}>
         <MenuItem value="all">All</MenuItem>
         <MenuItem value="completed">Completed</MenuItem>
         <MenuItem value="incomplete">Incomplete</MenuItem>
@@ -69,10 +103,7 @@ function App() {
       <List>
         {tasks
           .filter((task) => task.text.toLowerCase().includes(searchText.toLowerCase()))
-          .filter((task) => {
-            if (filter === "all") return true;
-            return filter === "completed" ? task.isCompleted : !task.isCompleted;
-          })
+          .filter((task) => (filter === "all" ? true : filter === "completed" ? task.isCompleted : !task.isCompleted))
           .map((task) => (
             <ListItem key={task._id} dense style={{ border: "1px solid #ccc", marginBottom: "8px", borderRadius: "8px" }}>
               <Checkbox
