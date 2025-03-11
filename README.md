@@ -26,6 +26,7 @@ This is a simple Todo application built with React, Convex, and Material-UI. The
 
 ## Project Structure
 
+```
 -project-root/
 - ├── convex/               # Convex server functions and schema
 - │   ├── functions.js      # CRUD functions for the todos
@@ -36,7 +37,7 @@ This is a simple Todo application built with React, Convex, and Material-UI. The
 - │   │   └── TodoItem.js   # Individual Todo item component
 - │   └── App.js            # Main App component
 - └── package.json          # Project dependencies and scripts
-
+```
 # Functional Requirements
 
 ## Todo Management:
